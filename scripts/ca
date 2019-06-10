@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+# Workers
+WORKERS=(
+    node_1
+    node_2
+    node_3
+)
+
+MASTERS=(
+    node_0
+    node_1
+    node_2
+)
+# Variables
+KEY_CN="Kubernetes"
+KEY_COUNTRY="Mars"
+KEY_LOCATION="Acidalia Planitia"
+KEY_ORG="Kubernetes"
+KEY_OU="R&D"
+KEY_ST="N/A"
+
+KEY_SIZE=4096
+
+
+# generate certificate authority config file + have cfssl generate the actual keys
+ca_generation() {
+
+    cat > ca-config.json <<EOF
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "8760h"
+      }
+    }
+  }
+}
+EOF
+
+    cat > ca-csr.json <<EOF
+{
+  "CN": "$KEY_CN",
+  "key": {
+    "algo": "rsa",
+    "size": $KEY_SIZE
+  },
+  "names": [
+    {
+      "C": "$KEY_COUNTRY",
+      "L": "$KEY_LOCATION",
+      "O": "$KEY_ORG",
+      "OU": "$KEY_OU",
+      "ST": "$KEY_ST"
+    }
+  ]
+}
+EOF
+
+    # generate the certificate authority
+    cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+}
+
+admin_generation() {
+
+    cat > admin-csr.json <<EOF
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": $KEY_SIZE
+  },
+  "names": [
+    {
+      "C": "$KEY_COUNTRY",
+      "L": "$KEY_LOCATION",
+      "O": "system:masters",
+      "OU": "$KEY_OU",
+      "ST": "$KEY_ST"
+    }
+  ]
+}
+EOF
+
+    cfssl gencert \
+          -ca=ca.pem \
+          -ca-key=ca-key.pem \
+          -config=ca-config.json \
+          -profile=kubernetes \
+          admin-csr.json | cfssljson -bare admin
+}
+
+main() {
+    ca_generation
+}
+
+main
