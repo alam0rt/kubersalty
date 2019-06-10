@@ -96,7 +96,6 @@ EOF
 }
 
 main() {
-    cd /tmp/
     ca_generation
 }
 
